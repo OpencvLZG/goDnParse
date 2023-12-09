@@ -13,7 +13,9 @@ package http
 import (
 	"goDnParse/util/aes"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -21,6 +23,7 @@ import (
 
 var routerLock sync.RWMutex
 
+// GenerateDnLink 解析下载
 func GenerateDnLink(w http.ResponseWriter, r *http.Request) {
 	// 获取原始文件URL参数
 	url := r.URL.Query().Get("url")
@@ -63,6 +66,7 @@ func GenerateDnLink(w http.ResponseWriter, r *http.Request) {
 	StatusOk(w, currentTime+tId+ext)
 }
 
+// GenerateToken  生成密钥
 func GenerateToken(w http.ResponseWriter, r *http.Request) {
 	token, err := aes.GenerateToken()
 	if err != nil {
@@ -77,4 +81,41 @@ func GenerateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, err = w.Write([]byte(token))
+}
+
+// FileUploadHandle 文件上传
+func FileUploadHandle(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token != "www.cilang.buzz" {
+		StatusFatal(w, "身份校验失败")
+		return
+	}
+	file, handle, err := r.FormFile("file")
+	if err != nil {
+		StatusFatal(w, "获取失败")
+		return
+	}
+	defer func(file multipart.File) {
+		err := file.Close()
+		if err != nil {
+			return
+		}
+	}(file)
+	targetFile, err := os.Create("static/file/" + handle.Filename)
+	if err != nil {
+		StatusFatal(w, "创建失败")
+		return
+	}
+	defer func(targetFile *os.File) {
+		err := targetFile.Close()
+		if err != nil {
+			return
+		}
+	}(targetFile)
+	_, err = io.Copy(targetFile, file)
+	if err != nil {
+		StatusFatal(w, "写入失败")
+		return
+	}
+	StatusOk(w, "上传成功")
 }

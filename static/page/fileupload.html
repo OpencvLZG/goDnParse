@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Home</title>
+    <title>FileUpload</title>
 </head>
 
 <body>
@@ -53,6 +53,12 @@
         box-shadow: inset 5px 5px 60px #915e00,
         inset -5px -5px 60px #ffec00;
     }
+    input[type="file"]::-webkit-file-upload-button{
+        content: "";
+        display: none;
+    }
+    .progressBar{opacity: 0.5; height: 50px;border-radius: 14px;  transition: 0.4s; color: orange;background-color: orange}
+    input[type="file"]{font: 15px/24px "Lato", Arial, sans-serif; color: #333; width: 100%; box-sizing: border-box; letter-spacing: 1px;background-color: #fff;border: none;outline: none;text-align: center;}
     input[type="text"]{font: 15px/24px "Lato", Arial, sans-serif; color: #333; width: 100%; box-sizing: border-box; letter-spacing: 1px;}
     .effect-14{opacity: 0.5; height: 50px;border-radius: 14px 0px 0px 14px;border: 1px solid #ccc; padding: 7px 14px; transition: 0.4s; }
     .focus-bg{padding: 0; }
@@ -62,7 +68,6 @@
     .effect-14 ~ .focus-bg:after{left: auto; right: 0; top: auto; bottom: 0;}
     .effect-14:focus ~ .focus-bg:after{transition: 0.3s; width: 50%; height: 100%;}
     :focus{outline: none;}
-
     * {
         box-sizing: border-box;
     }
@@ -119,9 +124,6 @@
     }
 
     @media (max-width:600px) {
-        .nav{
-            z-index: 999;
-        }
         .nav > .nav-btn {
             display: inline-block;
             position: absolute;
@@ -166,6 +168,15 @@
             overflow-y: auto;
         }
     }
+    progress {
+        width: 168px;
+        height: 5px;
+        background: lightseagreen;
+        color: lightpink;/*表示已完成进度的颜色*/
+        border-radius: 1em;
+        overflow: hidden;
+    }
+
 </style>
 <div class="nav">
     <input type="checkbox" id="nav-check">
@@ -191,72 +202,111 @@
     </div>
 </div>
 <center>
-    <h1>Download <span>Parse</span></h1>
+    <h1>File <span>Upload</span></h1>
     <p>community</p>
     <div class="row">
         <div class="col">
-            <input id="urlInput" data-parent class="effect-14" type="text" placeholder="Input Parse Link">
+            <input id="tokenInput" data-parent class="effect-14" type="text" placeholder="Input Auth Token">
             <span class="focus-bg"></span>
         </div>
 
-        <button class="btn14" onclick="getParseLink()" >
-            Generate
+        <button class="btn14" onclick="" >
+            Token
         </button>
     </div>
     <div class="row">
         <div class="col">
-            <input id="urlOutput" data-parent class="effect-14" type="text" placeholder="Input Parse Link">
+            <input name="file" id="fileUpload" data-parent class="effect-14" type="file" placeholder="Input Parse Link">
             <span class="focus-bg"></span>
         </div>
 
-        <button class="btn14" onclick="Copy()" >
-            Copy
+        <button class="btn14" onclick="fileUpload()" >
+            Upload
         </button>
+    </div>
+    <div class="row">
+        <div class="col">
+            <progress class="progressBar" id="progressBar" value="0" max="100" style="width: 100%"></progress>
+        </div>
+
     </div>
 
 </center>
 </body>
 <script>
-    var xhr = new XMLHttpRequest();
-    function callback(response) {
-        // const input = document.querySelector('input');
-        var copyText = document.getElementById("urlOutput");
-        console.log(copyText);
-        console.log(copyText.innerHTML);
-        copyText.value = window.location.hostname + "/dn/" +response;
+    function _(el) {
+        return document.getElementById(el);
     }
-
-    function getParseLink() {
-        const input = document.querySelector('input');
-        console.log(input.value);
-        url = input.value;
-        xhr.open('GET', '/download?url=' + url);
-        xhr.send();
-    }
-    xhr.onload = function() {
-        if(xhr.status === 200) {
-            // 请求成功,处理响应数据
-            // var data = JSON.parse(xhr.responseText);
-            console.log(xhr.responseText);
-            setTimeout(callback, 0,xhr.responseText);
-        }
-        else{
-            //请求失败,处理错误
-            console.log("parse url fatal");
-            console.log(xhr.responseText);
-            if (xhr.status === 403){
-                location.replace("/static/err/403.html");
+    const xhr = new XMLHttpRequest();
+    window.onload = function () {
+        xhr.onload = function() {
+            if(xhr.status === 200) {
+                // 请求成功,处理响应数据
+                // var data = JSON.parse(xhr.responseText);
+                console.log(xhr.responseText);
+                setTimeout(callback, 0,xhr.responseText);
             }
+            else{
+                //请求失败,处理错误
+                console.log("file upload fatal");
+                console.log(xhr.responseText);
+                if (xhr.status === 403){
+                    location.replace("/static/err/403.html");
+                }
 
+            }
         }
+        xhr.upload.addEventListener("progress", progressHandler, false);
+        xhr.addEventListener("load", completeHandler, false);
+        xhr.addEventListener("error", errorHandler, false);
+        xhr.addEventListener("abort", abortHandler, false);
     }
-    function Copy() {
-        var copyText = document.getElementById("urlOutput");
-        copyText.select();
-        copyText.setSelectionRange(0, 99999);
-        document.execCommand('copy');
-        textarea.remove();
-        navigator.clipboard.writeText(copyText.value);
+    function callback(response) {
+        alert(response);
+
     }
+
+    function fileUpload() {
+        const tokenInput = document.getElementById('tokenInput');
+        const token = tokenInput.value;
+        console.log(token);
+        const fileInput = document.getElementById('fileUpload');
+        const file = fileInput.files[0];
+        console.log(file);
+        var formData = new FormData();
+        formData.append("file",file);
+        xhr.open("POST","/fileUpload?token="+token,true);
+        xhr.send(formData);
+    }
+
+
+    function progressHandler(event) {
+        // _("loaded_n_total").innerHTML = "Uploaded " + event.loaded + " bytes of " + event.total;
+        var percent = (event.loaded / event.total) * 100;
+        _("progressBar").value = Math.round(percent);
+        console.log(percent);
+        // _("status").innerHTML = Math.round(percent) + "% uploaded... please wait";
+    }
+
+    function completeHandler(event) {
+        // _("status").innerHTML = event.target.responseText;
+        // _("progressBar").value = 0; //wil clear progress bar after successful upload
+    }
+
+    function errorHandler(event) {
+        // _("status").innerHTML = "Upload Failed";
+    }
+
+    function abortHandler(event) {
+        // _("status").innerHTML = "Upload Aborted";
+    }
+    // function Copy() {
+    //     var copyText = document.getElementById("urlOutput");
+    //     copyText.select();
+    //     copyText.setSelectionRange(0, 99999);
+    //     document.execCommand('copy');
+    //     textarea.remove();
+    //     navigator.clipboard.writeText(copyText.value);
+    // }
 </script>
 </html>
